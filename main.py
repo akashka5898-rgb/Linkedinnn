@@ -17,8 +17,7 @@ except KeyError as e:
     exit(1)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-# Using the 70B model for maximum intelligence and formatting reliability
-MODEL = "llama3-70b-8192" 
+MODEL = "llama3-70b-8192"
 
 def get_google_creds():
     """Decodes the Base64 secret back into a JSON object for gspread."""
@@ -35,58 +34,67 @@ def generate_content():
     """Calls Groq Llama3 to generate content with strict JSON formatting."""
     print("🤖 Asking Groq AI for content...")
     
-    prompt = """
-    Act as a senior LinkedIn Growth Expert. Generate 3 distinct, high-performing posts.
-    
-    Topics to rotate: 
-    1. AI Tool of the week
-    2. Data Science Career Advice
-    3. Python Optimization Tip
-    
-    CRITICAL INSTRUCTIONS:
-    - Return ONLY a valid JSON array. 
-    - Do NOT write "Here is the JSON" or any intro text.
-    - strictly adhere to this format:
-    [
-      {
-        "hook": "First line that grabs attention",
-        "body": "The core value of the post (max 1000 chars)",
-        "hashtags": "#AI #DataScience #Growth",
-        "cta": "Comment 'AI' for the link!"
-      }
-    ]
-    """
+    prompt = """Act as a senior LinkedIn Growth Expert. Generate 3 distinct, high-performing posts.
+
+Topics to rotate: 
+1. AI Tool of the week
+2. Data Science Career Advice
+3. Python Optimization Tip
+
+CRITICAL INSTRUCTIONS:
+- Return ONLY a valid JSON array. 
+- Do NOT write "Here is the JSON" or any intro text.
+- Strictly adhere to this format:
+[
+  {
+    "hook": "First line that grabs attention",
+    "body": "The core value of the post (max 1000 chars)",
+    "hashtags": "#AI #DataScience #Growth",
+    "cta": "Comment 'AI' for the link!"
+  }
+]"""
     
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
     
+    # FIXED: Groq expects "model" at the top level and proper message structure
     payload = {
-        "messages": [{"role": "user", "content": prompt}],
         "model": MODEL,
-        "temperature": 0.5 # Lower temp = more reliable JSON
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.5,
+        "max_tokens": 2000
     }
     
     try:
-        response = requests.post(GROQ_URL, json=payload, headers=headers)
+        response = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
         data = response.json()
         content = data['choices'][0]['message']['content']
         
         # --- ROBUST JSON EXTRACTION ---
-        # This regex finds the first '[' and the last ']' to ignore any extra text
         json_match = re.search(r'\[.*\]', content, re.DOTALL)
         if json_match:
             clean_json = json_match.group(0)
-            return json.loads(clean_json)
+            posts = json.loads(clean_json)
+            print(f"✅ Generated {len(posts)} posts successfully")
+            return posts
         else:
             raise ValueError("No JSON array found in response")
             
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"❌ Gen Error: Failed to generate or parse content. {str(e)}")
-        if 'content' in locals():
-            print(f"Raw Output was: {content}")
+        if 'response' in locals() and hasattr(response, 'text'):
+            print(f"Raw Response: {response.text[:500]}")
+        exit(1)
+    except Exception as e:
+        print(f"❌ Unexpected Error: {str(e)}")
         exit(1)
 
 def save_to_sheets(posts):
@@ -108,7 +116,7 @@ def save_to_sheets(posts):
                 post.get('body', 'N/A'),
                 post.get('hashtags', 'N/A'),
                 post.get('cta', 'N/A'),
-                "Generated" # Status column
+                "Generated"
             ])
             
         sheet.append_rows(rows_to_add)
