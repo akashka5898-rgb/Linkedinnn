@@ -54,30 +54,46 @@ def generate_content():
         "Your only job is to output valid JSON with high‑quality posts."
     )
 
-    user_prompt = """
-Generate 3 distinct, high‑performing LinkedIn posts.
+        user_prompt = """
+You are building a content library for a LinkedIn creator who talks about:
+- AI tools
+- Data analyst career
+- Data science skills
+- Latest hiring alerts in data and AI
 
-Topics to rotate:
-1. AI Tool of the week
-2. Data Science Career Advice
-3. Python Optimization Tip
+Generate 8 LinkedIn post ideas in strict JSON.
 
-CRITICAL RULES:
-- Return ONLY a valid JSON array.
-- No extra text, no explanations, no markdown.
-- STRICT format:
+For each post, choose:
+- topic: one of ["ai_tool", "data_analyst", "data_science", "hiring_alert"]
+- post_type: one of ["single_image", "carousel", "short_video"]
+
+For each object in the array, output these fields:
+
 [
   {
-    "hook": "First line that grabs attention",
-    "body": "The core value of the post (max 1000 chars)",
-    "hashtags": "#AI #DataScience #Python",
-    "cta": "Call to action line"
+    "topic": "ai_tool",
+    "post_type": "single_image",
+    "hook": "Scroll stopping first line for LinkedIn",
+    "body": "Short, practical post body, max 900 characters, written in simple English, with line breaks for readability.",
+    "cta": "One line call to action that invites comments or saves.",
+    "hashtags": "#AI #DataScience #DataAnalytics #Careers",
+    "image_prompt": "Very detailed visual description for a single image that matches the post. Do not mention text or captions.",
+    "carousel_prompts": [
+      "Prompt describing slide 1 visual and message",
+      "Prompt describing slide 2 visual and message",
+      "Prompt describing slide 3 visual and message"
+    ],
+    "video_prompt": "Detailed 30 second video idea with scenes. Describe camera shots, what appears on screen, and general style. No voiceover script, only visual directions."
   }
 ]
 
-Use different styles for each hook. Keep body concise and practical.
+Rules:
+- Return ONLY a valid JSON array of objects in that exact structure.
+- Use English.
+- Vary hooks and angles so posts are not repetitive.
+- Hiring alert posts should look like updates, tips, or breakdowns of real job trends, not fake job posts.
+- Focus on delivering real value, not clickbait.
 """
-
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
@@ -173,3 +189,4 @@ if __name__ == "__main__":
         exit(1)
 
     save_to_sheets(posts)
+
