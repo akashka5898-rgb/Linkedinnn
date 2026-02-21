@@ -161,13 +161,34 @@ def save_to_sheets(posts):
 
         rows = []
         for p in posts:
+            topic = p.get("topic", "")
+            post_type = p.get("post_type", "")
+            hook = p.get("hook", "")
+            body = p.get("body", "")
+            hashtags = p.get("hashtags", "")
+            cta = p.get("cta", "")
+            image_prompt = p.get("image_prompt", "")
+            carousel_prompts = p.get("carousel_prompts", [])
+            video_prompt = p.get("video_prompt", "")
+
+            # join carousel prompts into one cell for easier copy paste
+            if isinstance(carousel_prompts, list):
+                carousel_prompts_str = " | ".join(carousel_prompts)
+            else:
+                carousel_prompts_str = str(carousel_prompts)
+
             rows.append(
                 [
                     today,
-                    p.get("hook", ""),
-                    p.get("body", ""),
-                    p.get("hashtags", ""),
-                    p.get("cta", ""),
+                    topic,
+                    post_type,
+                    hook,
+                    body,
+                    hashtags,
+                    cta,
+                    image_prompt,
+                    carousel_prompts_str,
+                    video_prompt,
                     "Generated",
                 ]
             )
@@ -179,7 +200,6 @@ def save_to_sheets(posts):
         print(f"❌ Sheet Error: Failed to write to Google Sheets. {e}")
         exit(1)
 
-
 # ---------- MAIN ----------
 
 if __name__ == "__main__":
@@ -189,4 +209,5 @@ if __name__ == "__main__":
         exit(1)
 
     save_to_sheets(posts)
+
 
