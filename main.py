@@ -39,6 +39,38 @@ def get_google_creds():
         exit(1)
 
 
+def normalize_json_newlines(json_text: str) -> str:
+    """Replace raw newline characters inside JSON strings with \\n."""
+    result = []
+    in_string = False
+    escape = False
+
+    for ch in json_text:
+        if in_string:
+            if escape:
+                result.append(ch)
+                escape = False
+            else:
+                if ch == '\\':
+                    result.append(ch)
+                    escape = True
+                elif ch == '"':
+                    result.append(ch)
+                    in_string = False
+                elif ch == '\n':
+                    result.append("\\n")
+                elif ch == '\r':
+                    continue
+                else:
+                    result.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+            result.append(ch)
+
+    return "".join(result)
+
+
 def generate_content():
     print("🤖 Asking Groq AI for content (via REST API)...")
 
@@ -67,7 +99,7 @@ For each object in the array, output these fields:
     "topic": "ai_tool",
     "post_type": "single_image",
     "hook": "Scroll stopping first line for LinkedIn",
-    "body": "Short, practical post body, max 900 characters, written in simple English, with line breaks for readability.",
+    "body": "Short, practical post body, max 900 characters, written in simple English, with \\n between short paragraphs.",
     "cta": "One line call to action that invites comments or saves.",
     "hashtags": "#AI #DataScience #DataAnalytics #Careers",
     "image_prompt": "Very detailed visual description for a single image that matches the post. Do not mention text or captions.",
@@ -83,6 +115,7 @@ For each object in the array, output these fields:
 Rules:
 - Return ONLY a valid JSON array of objects in that exact structure.
 - Use English.
+- Never insert raw newline characters inside JSON strings. Use \\n wherever you want a line break.
 - Vary hooks and angles so posts are not repetitive.
 - Hiring alert posts should look like updates, tips, or breakdowns of real job trends, not fake job posts.
 - Focus on delivering real value, not clickbait.
@@ -120,6 +153,7 @@ Rules:
             raise ValueError("No JSON array found in model output.")
 
         json_str = match.group(0)
+        json_str = normalize_json_newlines(json_str)
         posts = json.loads(json_str)
 
         if not isinstance(posts, list) or not posts:
