@@ -8,7 +8,6 @@ import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# ---------- CONFIG & ENV CHECKS ----------
 
 def get_env(name: str) -> str:
     value = os.environ.get(name)
@@ -17,19 +16,16 @@ def get_env(name: str) -> str:
         exit(1)
     return value
 
+
 SHEET_ID = get_env("G_SHEET_ID")
 GROQ_API_KEY = get_env("GROQ_API_KEY")
 G_CREDS_B64 = get_env("G_CREDS_B64")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-# Use current recommended Groq chat model
-MODEL = "llama-3.3-70b-versatile"  # official chat model name
+MODEL = "llama-3.3-70b-versatile"
 
-
-# ---------- GOOGLE SHEETS AUTH ----------
 
 def get_google_creds():
-    """Decode Base64 service account JSON and create credentials for gspread."""
     try:
         creds_json = base64.b64decode(G_CREDS_B64).decode("utf-8")
         creds_dict = json.loads(creds_json)
@@ -43,18 +39,15 @@ def get_google_creds():
         exit(1)
 
 
-# ---------- GROQ CALL VIA REQUESTS ----------
-
 def generate_content():
-    """Call Groq chat completions API and return a list of posts."""
     print("🤖 Asking Groq AI for content (via REST API)...")
 
     system_msg = (
         "You are a senior LinkedIn Growth Expert. "
-        "Your only job is to output valid JSON with high‑quality posts."
+        "Your only job is to output valid JSON with high quality posts."
     )
 
-        user_prompt = """
+    user_prompt = """
 You are building a content library for a LinkedIn creator who talks about:
 - AI tools
 - Data analyst career
@@ -94,6 +87,7 @@ Rules:
 - Hiring alert posts should look like updates, tips, or breakdowns of real job trends, not fake job posts.
 - Focus on delivering real value, not clickbait.
 """
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
@@ -121,7 +115,6 @@ Rules:
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
 
-        # Robust JSON extraction – find first [...] block
         match = re.search(r"\[.*\]", content, re.DOTALL)
         if not match:
             raise ValueError("No JSON array found in model output.")
@@ -130,14 +123,13 @@ Rules:
         posts = json.loads(json_str)
 
         if not isinstance(posts, list) or not posts:
-            raise ValueError("Parsed JSON is not a non‑empty list.")
+            raise ValueError("Parsed JSON is not a non empty list.")
 
         return posts
 
     except Exception as e:
         print("❌ Gen Error: Failed to generate or parse content.")
         print(f"Reason: {e}")
-        # Try to show raw content if available
         try:
             print("Raw model output:")
             print(content)
@@ -146,10 +138,7 @@ Rules:
         exit(1)
 
 
-# ---------- SAVE TO GOOGLE SHEETS ----------
-
 def save_to_sheets(posts):
-    """Append generated posts into the first sheet of your Google Spreadsheet."""
     print("📊 Connecting to Google Sheets...")
 
     try:
@@ -171,7 +160,6 @@ def save_to_sheets(posts):
             carousel_prompts = p.get("carousel_prompts", [])
             video_prompt = p.get("video_prompt", "")
 
-            # join carousel prompts into one cell for easier copy paste
             if isinstance(carousel_prompts, list):
                 carousel_prompts_str = " | ".join(carousel_prompts)
             else:
@@ -200,7 +188,6 @@ def save_to_sheets(posts):
         print(f"❌ Sheet Error: Failed to write to Google Sheets. {e}")
         exit(1)
 
-# ---------- MAIN ----------
 
 if __name__ == "__main__":
     posts = generate_content()
@@ -209,5 +196,3 @@ if __name__ == "__main__":
         exit(1)
 
     save_to_sheets(posts)
-
-
